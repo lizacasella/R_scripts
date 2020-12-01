@@ -1,0 +1,104 @@
+---
+title: "pre_post_genes"
+output: html_document
+---
+
+
+```{r init}
+library(dplyr) # data manipulation
+library(Seurat) # toolkit single cell RNA seq data
+
+# Load the dataset 
+tcr <- readRDS("/Users/lizacasella/Desktop/calr_data/calr_tcr.rds")
+
+# normalize and scale 
+tcr <- NormalizeData(tcr)
+tcr <- ScaleData(tcr)
+
+```
+
+
+```{r}
+
+DimPlot(tcr, group.by = "seurat_clusters")
+DimPlot(tcr, group.by = "Cluster.Ident")
+DimPlot(tcr, group.by = "Genotype")
+DimPlot(tcr, group.by = "IFN.Status2")
+
+```
+
+
+
+```{r}
+
+##### pre/post IFN gene expression 
+
+# subsets of pre- and post-IFN 
+tcr_pre <- subset(tcr, subset = IFN.Status2 == "Pre")
+tcr_post <- subset(tcr, subset = IFN.Status2 == "Post")
+
+# all Pre-IFN genes
+pre_genes <- FindMarkers(tcr,ident.1 = "Pre", test.use="LR", group.by = "IFN.Status2")
+pre_genes <- rownames(pre_genes)
+
+# all post-IFN genes
+post_genes <- FindMarkers(tcr, ident.1 = "Post", test.use = "LR", group.by="IFN.Status2")
+post_genes <- rownames(post_genes)
+
+# genes expressed in pre-IFN but not post_IFN
+pre_ifn_genes <- setdiff(pre_genes,post_genes)
+
+# genes expressed in post-IFN but not pre_IFN
+post_ifn_genes <- setdiff(post_genes,pre_genes)
+
+
+
+# cluster 
+c <- 1
+
+# genes in cluster 1 not due to IFN status 
+de_ifn <- FindMarkers(tcr, test.use = "LR" , ident.1 = c ,latent.vars = "IFN.Status2", assay="RNA")
+de_genes_ifn <- rownames(de)
+
+
+
+```
+
+```{r}
+
+#### mutant/WT gene expression ######
+
+mut <- subset(tcr, subset = Genotype == "MUT")
+wt <- subset(tcr, subset = Genotype == "WT")
+
+
+# all WT genes
+wt_genes <- FindMarkers(tcr,ident.1 = "WT", test.use="LR", group.by = "Genotype")
+wt_genes <- rownames(wt_genes)
+
+# all mutant genes 
+mut_genes <- FindMarkers(tcr, ident.1 = "MUT", test.use = "LR", group.by="Genotype")
+mut_genes <- rownames(mut_genes)
+
+# genes expressed in mutant but not WT 
+mut_calr_genes <- setdiff(mut_genes,wt_genes)
+
+# genes expressed in WT but not mutant
+wt_calr_genes <- setdiff(wt_genes,mut_genes)
+
+
+
+```
+
+
+```{r}
+
+
+
+
+
+
+
+```
+
+

@@ -1,0 +1,36 @@
+---
+title: "tcr rearrangement"
+output: html_document
+---
+
+
+```{r init}
+library(Seurat)
+library(ggplot2)
+library(patchwork)
+
+
+
+# Load the dataset 
+
+calr <- readRDS("/Users/lizacasella/Desktop/calr_data/calr.3p.rds")
+
+pre <- subset(calr, subset = Genotype == "Pre")
+
+post <- subset(calr, subset = IFN.Status2 == "Post")
+
+
+```
+
+```{r}
+
+# find variable genes for each protein
+
+DimPlot(calr, group.by = "clonotype_id")
+
+
+
+```
+
+
+

@@ -1,0 +1,51 @@
+---
+title: "mut_wt_genes"
+output: html_document
+---
+
+
+```{r init}
+library(dplyr) # data manipulation
+library(Seurat) # toolkit single cell RNA seq data
+library(ggplot2)
+library(patchwork)
+library(data.table)
+
+
+# Load the dataset 
+
+tcr <- readRDS("/Users/lizacasella/Desktop/data/calr_tcr.rds")
+
+tcr <- NormalizeData(tcr)
+tcr <- ScaleData(tcr)
+
+mut <- subset(tcr, subset = Genotype == "MUT")
+wt <- subset(tcr, subset = Genotype == "WT")
+
+
+```
+
+
+```{r}
+
+# all WT genes
+wt_genes <- FindMarkers(tcr,ident.1 = "WT", test.use="LR", group.by = "Genotype")
+wt_genes <- rownames(wt_genes)
+
+# all mutant genes 
+mut_genes <- FindMarkers(tcr, ident.1 = "MUT", test.use = "LR", group.by="Genotype")
+mut_genes <- rownames(mut_genes)
+
+
+mut_calr_genes <- setdiff(mut_genes,wt_genes)
+
+
+wt_calr_genes <- setdiff(wt_genes,mut_genes)
+
+
+
+```
+
+
+
+

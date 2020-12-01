@@ -1,0 +1,63 @@
+---
+title: "T_cell_clones_CALR_mut"
+output: html_document
+---
+
+```{r init}
+library(dplyr) # data manipulation
+library(Seurat) # toolkit single cell RNA seq data
+library(ggplot2)
+library(ggpubr)
+
+# Load the dataset 
+tcr <- readRDS("/Users/lizacasella/Desktop/calr_data/calr_tcr.rds")
+
+# normalize and scale 
+tcr <- NormalizeData(tcr)
+tcr <- ScaleData(tcr)
+
+# show number of cells for each seurat cluster 
+table(Idents(tcr))
+
+```
+
+```{r}
+
+# cell types
+cells <- data.frame(unique(tcr@meta.data$Cluster.Ident))
+
+# subset into pre- and post-IFN
+WT <- subset(tcr, subset = Genotype == "WT")
+MUT <- subset(tcr, subset = Genotype == "MUT")
+
+
+```
+
+
+```{r}
+# make dataframes of clonotypes
+wt_clones <- data.frame(clone_wt = WT@meta.data$clonotype_id)
+mut_clones <- data.frame(clone_mut = MUT@meta.data$clonotype_id)
+
+# find duplicated clonotypes WT
+wt_dup <- data.frame(duplicated(wt_clones))
+wt_dup_ <- wt_clones[wt_dup=="TRUE"]
+
+# find duplicated clonotypes MUT
+mut_dup <- data.frame(duplicated(mut_clones))
+mut_dup_ <- mut_clones[mut_dup=="TRUE"]
+
+# make data frames with number of each clonotype
+wt_df <- data.frame(table(wt_dup_))
+wt_df <- data.frame(clone = wt_df$wt_dup_, Freq =wt_df$Freq)
+mut_df <- data.frame(table(mut_dup_))
+mut_df <- data.frame(clone =mut_df$mut_dup_, Freq =mut_df$Freq)
+
+
+intersect(mut_df$clone, wt_df$clone)
+
+share_wt <- wt_df$Freq[wt_df=="clonotype42"]
+
+
+```
+

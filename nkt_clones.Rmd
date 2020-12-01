@@ -1,0 +1,86 @@
+---
+title: "nkt_clones"
+output: html_document
+---
+
+```{r init}
+library(dplyr) # data manipulation
+library(Seurat) # toolkit single cell RNA seq data
+library(ggplot2)
+library(ggpubr)
+
+# Load the dataset 
+tcr <- readRDS("/Users/lizacasella/Desktop/calr_data/calr_tcr.rds")
+
+# normalize and scale 
+tcr <- NormalizeData(tcr)
+tcr <- ScaleData(tcr)
+
+# show number of cells for each seurat cluster 
+table(Idents(tcr))
+
+
+```
+
+
+```{r}
+
+# cell types
+cells <- data.frame(unique(tcr@meta.data$Cluster.Ident))
+
+# subset into pre- and post-IFN
+pre <- subset(tcr, subset = IFN.Status2 == "Pre")
+post <- subset(tcr, subset = IFN.Status2 == "Post")
+
+# plot UMAP projection for pre and post
+# DimPlot(pre, group.by = "Cluster.Ident") 
+# DimPlot(post, group.by = "Cluster.Ident") 
+
+```
+
+
+```{r}
+
+# NKT suerat object subset
+nkt_pre <- subset(pre, subset = Cluster.Ident == "NKT")
+nkt_post <- subset(post, subset = Cluster.Ident == "NKT")
+
+# make dataframes of clonotypes
+nkt_clone_pre <- data.frame(clones_pre = nkt_pre@meta.data$clonotype_id)
+nkt_clone_post <- data.frame(clones_post = nkt_post@meta.data$clonotype_id)
+
+dis_pre <- (length(distinct(nkt_clone_pre)) / length(nkt_clone_pre)) 
+dis_post <- (length(distinct(nkt_clone_post)) / length(nkt_clone_post))
+
+
+# find duplicated clonotypes - pre-IFN
+nkt_dup_pre <- data.frame(duplicated(nkt_clone_pre))
+nkt_dup_pre_ <- nkt_clone_pre[nkt_dup_pre=="TRUE"]
+
+# find duplicated clonotypes - post-IFN
+nkt_dup_post <- data.frame(duplicated(nkt_clone_post))
+nkt_dup_post_ <- nkt_clone_post[nkt_dup_post=="TRUE"]
+
+
+t_nkt_pre <- table(nkt_dup_pre_)
+t_nkt_post <- table(nkt_dup_post_)
+
+# make data frames with number of each clonotype (add 1 to frequency)
+nkt_pre <- data.frame(table(nkt_dup_pre_))
+nkt_pre <- data.frame(clone = nkt_pre$nkt_dup_pre_, Freq = (nkt_pre$Freq + 1))
+nkt_post <- data.frame(table(nkt_dup_post_))
+nkt_post <- data.frame(clone = nkt_post$nkt_dup_post_, Freq = (nkt_post$Freq + 1))
+
+# plot histograms of clonotypes
+pr <- ggplot(nkt_pre) + geom_bar(aes(Freq)) + theme_bw() + xlim(0,20) + ggtitle("NKT Pre-IFN") + xlab("clonal population size") + theme_bw()
+po <- ggplot(nkt_post) + geom_bar(aes(Freq)) + theme_bw() + xlim(0,20) + ggtitle("NKT Post-IFN") + xlab("clonal population size") + theme_bw()
+
+ggarrange(pr,po)
+
+
+intersect(nkt_pre$clone,nkt_post$clone)
+
+# nkt_pre[order(nkt_pre$Freq),]
+# nkt_post[order(nkt_post$Freq),]
+
+```

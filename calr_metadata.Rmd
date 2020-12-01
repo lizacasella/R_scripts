@@ -1,0 +1,79 @@
+---
+title: "calr_metadata"
+output:
+  html_document:
+    theme: united
+    df_print: kable
+date: 'Compiled: `r format(Sys.Date(), "%B %d, %Y")`'
+---
+***
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  tidy = TRUE,
+  tidy.opts = list(width.cutoff = 120),
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+
+```{r init}
+library(dplyr) # data manipulation
+library(Seurat) # toolkit single cell RNA seq data
+
+calr <- readRDS("/Users/lizacasella/Desktop/Nam_Lab/calr.5p.rds")
+calrdata <- calr@meta.data
+
+df = as.data.frame(calrdata)
+
+```
+
+
+````{r}
+
+t1 <- length((df$hash.ID[df$hash.ID=="HTO-T1"]))
+
+t1 <- data.frame(df$hash.ID[df$hash.ID=="HTO-T2"])
+
+t1_mut <- length(data.frame(df$Genotype[df$Genotype=="MUT" & df$HTO_secondID=="HTO=T1"]))
+t1_wt <- length(data.frame(df$Genotype[df$Genotype=="WT" & df$$HTO_secondID=="HTO=T1"]))
+
+t2_mut <- length(data.frame(df$Genotype[df$Genotype=="MUT" & df$HTO_secondID=="HTO=T2"]))
+t2_wt <- length(data.frame(df$Genotype[df$Genotype=="WT" & df$$HTO_secondID=="HTO=T2"]))
+
+
+```
+
+
+````{r}
+
+
+type <- data.frame(df$Cluster.Ident)
+
+ggplot(type, aes(x = df$Cluster.Ident)) + geom_bar(color="blue",fill="blue") + ggtitle("Cell Type") + theme_minimal() + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) 
+
+
+
+
+
+
+
+```
+
+````{r}
+
+gt <- data.frame(df$Genotype)
+
+ggplot(gt, aes(x = df$Genotype)) + geom_bar(color="black",fill="white",width=0.5) + ggtitle("Genotype") + theme_bw() + geom_text(stat='count', aes(label=..count..), vjust=-1) + coord_cartesian(ylim=c(0,8500))
+  
+
+
+
+```
+
+
+
+
+
+

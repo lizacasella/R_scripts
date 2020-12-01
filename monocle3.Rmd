@@ -1,0 +1,102 @@
+---
+title: "monocle3"
+output: html_document
+---
+
+```{r init}
+library(dplyr) # data manipulation
+library(Seurat) # toolkit single cell RNA seq data
+library(monocle3)
+```
+
+
+```{r}
+
+# load data 
+
+calr <- readRDS("/Users/lizacasella/Desktop/Nam_Lab/calr.3p.rds")
+
+gene_annotation <- as.data.frame(rownames(calr@reductions[["pca"]]@feature.loadings), row.names = rownames(calr@reductions[["pca"]]@feature.loadings))
+colnames(gene_annotation) <- "gene_short_name"
+
+# part two, cell information
+
+cell_metadata <- as.data.frame(calr@assays[["RNA"]]@counts@Dimnames[[2]], row.names = calr@assays[["RNA"]]@counts@Dimnames[[2]])
+colnames(cell_metadata) <- "barcode"
+
+# part three, counts sparse matrix
+
+New_matrix <- calr@assays[["RNA"]]@counts
+New_matrix <- New_matrix[rownames(calr@reductions[["pca"]]@feature.loadings), ]
+expression_matrix <- New_matrix
+
+cds <- new_cell_data_set(expression_matrix,
+                                     cell_metadata = cell_metadata,
+                                     gene_metadata = gene_annotation)
+
+
+ident <- data.frame(calr@meta.data$Cluster.Ident)
+seurat <- data.frame(calr@meta.data$seurat_clusters)
+mut <- data.frame(calr@meta.data$Genotype)
+
+#cds@colData <- cbind(cds@colData,cell,ifn,mut)
+
+cds@colData$geno <- calr@meta.data$Genotype
+cds@colData$ident <- calr@meta.data$Cluster.Ident
+cds@colData$seurat <- calr@meta.data$seurat_clusters
+
+```
+
+
+```{r}
+# pre process
+
+cds <- preprocess_cds(cds, num_dim = 100)
+plot_pc_variance_explained(cds)
+
+cds <- reduce_dimension(cds)
+cds <- cluster_cells(cds, resolution=1e-2)
+learn_graph(cds)
+
+plot_cells(cds,color_cells_by = "ident")
+
+plot_cells(cds, label_groups_by_cluster=FALSE,show_trajectory_graph = TRUE, color_cells_by = "ident")
+
+plot_cells(cds, color_cells_by = "partition")
+
+
+
+plot_cells(cds,
+           color_cells_by = "ident",
+           label_groups_by_cluster=FALSE,
+           label_leaves=FALSE,
+           label_branch_points=FALSE)
+
+
+cds <- reduce_dimension(cds, reduction_method="tSNE")
+plot_cells(cds, reduction_method="tSNE",color_cells_by = "ident")
+```
+
+
+```{r}
+
+cds <- learn_graph(cds)
+plot_cells(cds,
+           color_cells_by = "ident",
+           label_groups_by_cluster=FALSE,
+           label_leaves=FALSE,
+           label_branch_points=FALSE)
+
+# GOOD GRAPH
+plot_cells(cds,
+           color_cells_by = "ident",
+           label_cell_groups=FALSE,
+           label_leaves=TRUE,
+           label_branch_points=TRUE,
+           graph_label_size=1.5)
+
+
+
+
+
+```

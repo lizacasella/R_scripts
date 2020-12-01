@@ -1,0 +1,356 @@
+---
+title: "calr tcr"
+output: html_document
+---
+
+```{r init}
+library(dplyr) # data manipulation
+library(Seurat) # toolkit single cell RNA seq data
+
+# Load the dataset 
+
+tcr <- readRDS("/Users/lizacasella/Desktop/Nam_Lab/calr_tcr.rds")
+tcrdata <- tcr@meta.data
+```
+
+
+
+```{r}
+
+# shows data 
+# Lets examine a few genes in the first thirty cells
+tcr[c("CD4","CD8","MS4A1"), 1:30]
+```
+
+
+````{r}
+
+# object.size returns the amount of memory used to store object 
+# creates sparse matrix representation (only stores non-zero objects)
+
+dense.size <- object.size(x = as.matrix(x = tcrdata))
+dense.size
+sparse.size <- object.size(x = tcrdata)
+sparse.size
+dense.size / sparse.size
+```
+
+
+```{r mito, fig.height=7, fig.width=13}
+
+# The [[ operator can add columns to object metadata. This is a great place to stash QC stats
+# finds mitochondrial genes (start with MT)
+
+tcr[["percent.mt"]] <- PercentageFeatureSet(object = tcr, pattern = "^MT-")
+```
+
+    
+```{r qc, fig.height=7, fig.width=13}
+
+# Show QC metrics for the first 5 cells
+# "head" = first several rows
+head(x = tcr@meta.data, 5)
+```
+
+
+    
+```{r qc2, fig.height=7, fig.width=13}
+
+#Visualize QC metrics as a violin plot
+VlnPlot(object = tcr, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+
+# FeatureScatter is typically used to visualize feature-feature relationships, but can be used for anything calculated by the object, i.e. columns in object metadata, PC scores etc.
+
+# plots RNA counts and % mitochondrial RNA
+plot1 <- FeatureScatter(object = tcr, feature1 = "nCount_RNA", feature2 = "percent.mt") 
+plot2 <- FeatureScatter(object = tcr, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") 
+CombinePlots(plots = list(plot1,plot2))
+
+# remove unwanted cells 
+# filtering cells with feature counts > 2500, < 200, or > 5% mitochondrial 
+tcr <- subset(x = tcr, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 5)
+```
+
+
+
+```{r normalize}
+
+# normalizes feature expression by total expression for each cell
+# scales by 10000 
+# log transforms result
+
+tcr <- NormalizeData(object = tcr, normalization.method = "LogNormalize", scale.factor = 1e4)
+```
+
+
+
+```{r normalize.default, eval = FALSE}
+
+# normalize without providing detault values
+
+tcr <- NormalizeData(object = tcr)
+```
+
+
+
+```{r var_features, fig.height=5, fig.width=11}
+
+# find features that exhibit high variability 
+tcr <- FindVariableFeatures(object = tcr,selection.method = 'vst', nfeatures = 200)
+
+# Identify the 10 most highly variable genes
+top10 <- head(x = VariableFeatures(object = tcr), 10)
+
+# plot variable features with and without labels
+plot1 <- VariableFeaturePlot(object = tcr)
+
+# this plot labels the top 10 most variable 
+plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
+
+# high standardized variaence by average expression
+CombinePlots(plots = list(plot1, plot2))
+```
+
+
+Scale option 1
+```{r regress, fig.height=7, fig.width=11, results='hide'}
+
+# get all genes to scale
+# scaling all of the genes ensures that highly-expressed genes don't domintate a heatmap 
+all.genes <- rownames(x = tcr)
+
+# scales and centers the data as described above for all the genes 
+tcr <- ScaleData(object = tcr, features = all.genes)
+```
+
+
+Scale option 2 
+```{r regressvar, fig.height=7, fig.width=11, results='hide',eval = FALSE}
+
+# scales data only for highly variable genes 
+# BETTER FOR HEATMAPS
+pbmc <- ScaleData(object = pbmc)
+
+```
+
+
+```{r regressvarmt, fig.height=7, fig.width=11, results='hide',eval = FALSE}
+# optional
+# removes specific unwanted sources of variation
+# e.g. percent of mitochondrial RNA
+tcr <- ScaleData(object = tcr, vars.to.regress = 'percent.mt')
+```
+
+
+```{r pca,results='hide'}
+
+# performs principle component analysis on previously determined variable features 
+tcr <- RunPCA(object = tcr, features = VariableFeatures(object = tcr))
+```
+
+
+```{r pca_viz, message=TRUE}
+
+# Examine and visualize PCA results a few different ways
+print(x = tcr[['pca']], dims = 1:5, nfeatures = 5)
+VizDimLoadings(object = tcr, dims = 1:2, reduction = 'pca')
+DimPlot(object = tcr, reduction = 'pca')
+
+```
+
+
+
+```{r single-heatmap}
+
+# plots a heatmap of most and least highly variable features 
+DimHeatmap(object = tcr, dims = 1, cells = 500, balanced = TRUE)
+```
+
+
+```{r multi-heatmap, fig.height=12, fig.width=9}
+
+# shows seperate heatmaps for the top 15 sources of variability 
+DimHeatmap(object = tcr, dims = 1:15, cells = 500, balanced = TRUE)
+```
+
+
+
+```{r jackstraw, fig.height=6, fig.width=10}
+
+# NOTE: This process can take a long time for big datasets, comment out for expediency. More approximate techniques such as those implemented in ElbowPlot() can be used to reduce computation time
+
+# determines statistical significance of PCA scores
+tcr <- JackStraw(object = tcr, num.replicate = 100)
+
+# computes significance of above
+tcr <- ScoreJackStraw(object = tcr, dims = 1:20)
+```
+
+
+
+```{r jsplots, fig.height=6, fig.width=10}
+
+# JackStraw plot, shows significant principle components 
+JackStrawPlot(object = tcr, dims = 1:15)
+
+# normal for more than 20 to be significant (from github forum)
+```
+
+
+
+```{r elbow_plot, fig.height=6, fig.width=10}
+
+# ranks PCs based on percentage of varience based on each 
+ElbowPlot(object = tcr, ndims = 20, reduction = "pca")
+
+```
+
+
+
+```{r cluster, fig.height=5, fig.width=7}
+
+# construct k nearest neighbor graph
+tcr <- FindNeighbors(object = tcr, dims = 1:10)
+
+# finds clusters incorporating granularity 
+tcr <- FindClusters(object = tcr, resolution = 0.5)
+
+# Look at cluster IDs of the first 5 cells
+head(x = Idents(object = tcr), 5)
+```
+
+
+
+```{r tsne, fig.height=5, fig.width=7}
+
+# If you haven't installed UMAP, you can do so via reticulate::py_install(packages = "umap-learn")
+
+# Uniform Manifold Approximation and Projection (UMAP) dimensional reduction technique
+tcr <- RunUMAP(object = tcr, dims = 1:10)
+```
+
+
+```{r tsneplot, fig.height=5, fig.width=7}
+# note that you can set `label = TRUE` or use the LabelClusters function to help label individual clusters
+
+# creates dimansional reduction plot
+DimPlot(object = tcr, reduction = 'umap')
+```
+
+
+
+```{r saveobject, eval=FALSE}
+
+# save seurat opject to an rds file 
+saveRDS(tcr, file = "/Users/lizacasella/Desktop/Nam_Lab/Seurat/tcr_tutorial.rds")
+```
+
+
+
+```{r markers1, fig.height=8, fig.width=15}
+
+# FindMarkers finds gene expression markers of identity classes
+# tests groups of cluster 
+# use FindAllMarkers to analyze all clusters 
+
+# find all markers of cluster 1
+cluster1.markers <- FindMarkers(object = tcr, ident.1 = 1, min.pct = 0.25)
+head(x = cluster1.markers, n = 5)
+
+# find all markers distinguishing cluster 5 from clusters 0 and 3
+cluster5.markers <- FindMarkers(object = tcr, ident.1 = 5, ident.2 = c(0, 3), min.pct = 0.25)
+head(x = cluster5.markers, n = 5)
+
+# find markers for every cluster compared to all remaining cells, report only the positive ones
+tcr.markers <- FindAllMarkers(object = tcr, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+tcr.markers %>% group_by(cluster) %>% top_n(n = 2, wt = avg_logFC)
+```
+
+
+
+```{r markersroc, fig.height=8, fig.width=15}
+
+# returns classification power for individual markers 
+cluster1.markers <- FindMarkers(object = tcr, ident.1 = 0, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+
+```
+
+We also suggest exploring `RidgePlot`, `CellScatter`, and `DotPlot` as additional methods to view your dataset.
+
+```{r markerplots, fig.height=8, fig.width=15}
+
+# expression probability distributions across clusters
+VlnPlot(object = tcr, features = c("LEF1", "LTB"))
+
+# you can plot raw counts as well
+VlnPlot(object = tcr, features = c("LEF1", "LTB"), slot = 'counts', log = TRUE)
+
+# visualizes feature expression on a tSNE or PCA plot
+#FeaturePlot(object = tcr, features = c("LEF1", "TNFRSF4", "S100A4", "RP11-291B21.2", "SOCS3", "CXCR3", "GZMK", "KLRB1", "GZMB"))
+
+# markers of cluster 1
+FeaturePlot(object = tcr, features = c("CCR7", "LTB", "PABPC1", "MYC", "NOSIP","SOCS3", "SESN3", "TMEM173", "ABLIM1"))
+
+
+```
+
+
+
+```{r clusterHeatmap, fig.height=8, fig.width=15}
+
+# plots heatmap for given cells and features
+# this shows top 20 markers for each cluster
+tcr.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_logFC) -> top10
+DoHeatmap(object = tcr, features = top10$gene) + NoLegend()
+
+```
+
+***
+### Assigning cell type identity to clusters
+
+Fortunately in the case of this dataset, we can use canonical markers to easily match the unbiased clustering to known cell types:
+
+Cluster ID | Markers       | Cell Type
+-----------|---------------|----------
+0          | IL7R, CCR7    | Memory CD4+ 
+1          | CD14, LYZ     | CD14+ Mono
+2          | IL7R, S100A4  | Naive CD4+ T 
+3          | MS4A1         | B 
+4          | CD8A          | CD8+ T 
+5          | FCGR3A, MS4A7 | FCGR3A+ Mono
+6          | GNLY, NKG7    | NK 
+7          | FCER1A, CST3  | DC
+8          | PPBP          | Mk
+
+
+```{r labelplot, fig.height=5, fig.width=9}
+
+# makes clusters using canonical markers for various cell types
+new.cluster.ids <- c("Memory CD4 T", "CD14+ Mono", "Naive CD4 T", "B", "CD8 T", "FCGR3A+ Mono", "NK", "DC", "Mk","CD4")
+names(x = new.cluster.ids) <- levels(x = tcr)
+tcr <- RenameIdents(object = tcr, new.cluster.ids)
+
+# creates dimensional reduction plot of new clusters 
+DimPlot(object = tcr, reduction = 'umap', label = TRUE, pt.size = 0.5) + NoLegend()
+```
+
+
+```{r save.img, include=FALSE}
+
+# plots using ggplot and saves to file
+library(ggplot2)
+plot <- DimPlot(object = tcr, reduction = "umap", label = TRUE, label.size = 4.5) + xlab("UMAP 1") + ylab("UMAP 2") + 
+  theme(axis.title = element_text(size = 18), legend.text = element_text(size = 18)) + 
+  guides(colour = guide_legend(override.aes = list(size = 10)))
+
+# saves plot to file 
+ggsave(filename = "/Users/lizacasella/Desktop/Nam_Lab/tcr_umap.png", height = 7, width = 12, plot = plot)
+```
+
+
+```{r save.rds}
+
+# saves edited pipeline to an rds file (single R object)
+saveRDS(pbmc, file = "/Users/lizacasella/Desktop/Nam_Lab/Seurat/pbmc3k_final.rds")
+```
+

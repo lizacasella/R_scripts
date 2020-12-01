@@ -1,0 +1,165 @@
+---
+title: "rna_velocity"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+```{r init}
+library(dplyr) 
+library(Seurat) 
+library(monocle3)
+```
+
+
+```{r}
+
+# load seurat object
+calr <- readRDS("/Users/lizacasella/Desktop/Nam_Lab/calr.3p.rds")
+
+# seperates calr into two seurat objects: pre- and post-IFN
+pre <- subset(calr, subset = IFN.Status == "Pre")
+post <- subset(calr, subset = IFN.Status == "Post")
+
+# creates gene matrices 
+gene_annotation_pre <- as.data.frame(rownames(pre@reductions[["pca"]]@feature.loadings), row.names = rownames(pre@reductions[["pca"]]@feature.loadings))
+colnames(gene_annotation_pre) <- "gene_short_name"
+
+gene_annotation_post <- as.data.frame(rownames(post@reductions[["pca"]]@feature.loadings), row.names = rownames(post@reductions[["pca"]]@feature.loadings))
+colnames(gene_annotation_post) <- "gene_short_name"
+
+# create metadata matrices
+cell_metadata_pre <- as.data.frame(pre@assays[["RNA"]]@counts@Dimnames[[2]], row.names = pre@assays[["RNA"]]@counts@Dimnames[[2]])
+colnames(cell_metadata_pre) <- "barcode"
+
+cell_metadata_post <- as.data.frame(post@assays[["RNA"]]@counts@Dimnames[[2]], row.names = post@assays[["RNA"]]@counts@Dimnames[[2]])
+colnames(cell_metadata_post) <- "barcode"
+
+# create expression matrices
+New_matrix_pre <- pre@assays[["RNA"]]@counts
+New_matrix_pre <- New_matrix_pre[rownames(pre@reductions[["pca"]]@feature.loadings), ]
+expression_matrix_pre <- New_matrix_pre
+
+New_matrix_post <- post@assays[["RNA"]]@counts
+New_matrix_post <- New_matrix_post[rownames(post@reductions[["pca"]]@feature.loadings), ]
+expression_matrix_post <- New_matrix_post
+
+
+# creates the cell data sets 
+cds_pre <- new_cell_data_set(expression_matrix_pre,
+                                     cell_metadata = cell_metadata_pre,
+                                     gene_metadata = gene_annotation_pre)
+
+cds_post <- new_cell_data_set(expression_matrix_post,
+                                     cell_metadata = cell_metadata_post,
+                                     gene_metadata = gene_annotation_post)
+
+
+# adds genotype and cluster ID to cell data colData (use later for plotting)
+type <- data.frame(calr@meta.data$Cluster.Main)
+gene <- data.frame(calr@meta.data$Genotype)
+
+cds_pre@colData$geno <- pre@meta.data$Genotype
+cds_pre@colData$type <- pre@meta.data$Cluster.Main
+
+cds_post@colData$geno <- post@meta.data$Genotype
+cds_post@colData$type <- post@meta.data$Cluster.Main
+
+```
+
+```{r}
+
+########## pre-IFN trajectory ############
+
+# pre process the data
+cds_pre <- preprocess_cds(cds_pre, num_dim = 100)
+
+# reduce dimensions 
+cds_pre <- reduce_dimension(cds_pre)
+#plot_cells(cds_pre,  color_cells_by = "type")
+
+# clusters cells 
+cds_pre <- cluster_cells(cds_pre, resolution=1e-5)
+#plot_cells(cds, color_cells_by = "partition")
+
+# learns graph
+cds_pre <- learn_graph(cds_pre)
+
+# plots cells by type with trajectory 
+plot_cells(cds_pre,
+           color_cells_by = "type",
+           label_cell_groups=FALSE,
+           label_leaves=TRUE,
+           label_branch_points=TRUE,
+           graph_label_size=1.5)
+
+# choose starting point(s)?
+## I'm not sure why it's seperating the cells into distinct subgraphs ?
+cds_pre <- order_cells(cds_pre)
+
+# plot pseudotime trajectory
+plot_cells(cds_pre,
+           color_cells_by = "pseudotime",
+           label_cell_groups=FALSE,
+           label_leaves=FALSE,
+           label_branch_points=FALSE,
+           graph_label_size=1.5)
+
+
+# assigns pseudotime values to every cell and puts them in a data frame with 
+# cell type and genotype
+traj_pre <- cds_pre@principal_graph_aux@listData[["UMAP"]][["pseudotime"]]
+time_pre <- data.frame(traj_pre)
+time_pre$cell <- pre@meta.data$Cluster.Main
+time_pre$gene <- pre@meta.data$Genotype
+
+
+```
+
+
+```{r}
+
+########## post-IFN trajectory ############
+
+# pre process 
+cds_post <- preprocess_cds(cds_post, num_dim = 100)
+
+# reduct dimensions 
+cds_post <- reduce_dimension(cds_post)
+
+# clusters cells 
+cds_post <- cluster_cells(cds_post, resolution=1e-5)
+#plot_cells(cds, color_cells_by = "partition")
+
+# learns graph
+cds_post <- learn_graph(cds_post)
+
+# plots cells by type with trajectory 
+plot_cells(cds_post,
+           color_cells_by = "type",
+           label_cell_groups=FALSE,
+           label_leaves=TRUE,
+           label_branch_points=TRUE,
+           graph_label_size=1.5)
+
+# choose starting point(s) for pseudotime analysis 
+cds_post <- order_cells(cds_post)
+
+# plot pseudotime trajectory
+plot_cells(cds_post,
+           color_cells_by = "pseudotime",
+           label_cell_groups=FALSE,
+           label_leaves=FALSE,
+           label_branch_points=FALSE,
+           graph_label_size=1.5)
+
+# assigns pseudotime values to every cell and puts them in a data frame with 
+# cell type and genotype
+traj_post <- cds_post@principal_graph_aux@listData[["UMAP"]][["pseudotime"]]
+time_post <- data.frame(traj_post)
+time_post$cell <- post@meta.data$Cluster.Ident
+time_post$gene <- post@meta.data$Genotype
+
+
+```
+

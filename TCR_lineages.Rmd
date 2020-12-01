@@ -1,0 +1,181 @@
+---
+title: "tcr lineage"
+output: html_document
+---
+
+```{r init}
+library(dplyr) # data manipulation
+library(Seurat) # toolkit single cell RNA seq data
+library(ggplot2)
+library(ggpubr)
+
+# Load the dataset 
+tcr <- readRDS("/Users/lizacasella/Desktop/calr_data/calr_tcr.rds")
+
+# normalize and scale 
+tcr <- NormalizeData(tcr)
+tcr <- ScaleData(tcr)
+
+# show number of cells for each seurat cluster 
+table(Idents(tcr))
+
+
+```
+
+
+```{r}
+
+# cell types
+cells <- data.frame(unique(tcr@meta.data$Cluster.Ident[tcr@meta.data$Cluster.Ident!="NA"]))
+
+# subset into pre- and post-IFN
+pre <- subset(tcr, subset = IFN.Status2 == "Pre")
+post <- subset(tcr, subset = IFN.Status2 == "Post")
+
+# plot UMAP projection for pre and post
+# DimPlot(pre, group.by = "Cluster.Ident") 
+# DimPlot(post, group.by = "Cluster.Ident") 
+
+```
+
+
+
+```{r}
+
+# memory CD4
+mem_cd4_pre <- subset(pre, subset = Cluster.Ident == "Memory CD4")
+mem_cd4_post <- subset(post, subset = Cluster.Ident == "Memory CD4")
+m_cd4_clone_pre <- data.frame(clones = mem_cd4_pre@meta.data$clonotype_id)
+m_cd4_clone_post <- data.frame(clones = mem_cd4_post@meta.data$clonotype_id)
+
+#NKT
+nkt_pre <- subset(pre, subset = Cluster.Ident == "Naive CD8")
+nkt_post <- subset(post, subset = Cluster.Ident == "Naive CD8")
+nkt_clone_pre <- data.frame(clones = nkt_pre@meta.data$clonotype_id)
+nkt_clone_post <- data.frame(clones = nkt_post@meta.data$clonotype_id)
+
+# Memory CD8
+mem_cd8_pre <- subset(pre, subset = Cluster.Ident == "Memory CD8")
+mem_cd8_post <- subset(post, subset = Cluster.Ident == "Memory CD8")
+mem_cd8_clone_pre <- data.frame(clones =mem_cd8_pre@meta.data$clonotype_id)
+mem_cd8_clone_post <- data.frame(clones = mem_cd8_post@meta.data$clonotype_id)
+
+# effector CD8
+eft_cd8_pre <- subset(pre, subset = Cluster.Ident == "Effector CD8")
+eft_cd8_post <- subset(post, subset = Cluster.Ident == "Effector CD8")
+eft_cd8_clone_pre <- data.frame(clones = eft_cd8_pre@meta.data$clonotype_id)
+eft_cd8_clone_post <- data.frame(clones = eft_cd8_post@meta.data$clonotype_id)
+
+
+# Memory Effector CD8 
+mem_eft_cd8_pre <- subset(pre, subset = Cluster.Ident == "Memory Effector CD8")
+mem_eft_cd8_post <- subset(post, subset = Cluster.Ident == "Memory Effector CD8")
+mem_eft_cd8_clone_pre <- data.frame(clones = mem_eft_cd8_pre@meta.data$clonotype_id)
+mem_eft_cd8_clone_post <- data.frame(clones = mem_eft_cd8_post@meta.data$clonotype_id)
+
+
+# naive CD4
+n_cd4_pre <- subset(pre, subset = Cluster.Ident == "Naive CD4")
+n_cd4_post <- subset(post, subset = Cluster.Ident == "Naive CD4")
+n_cd4_clone_pre <- data.frame(clones = n_cd4_pre@meta.data$clonotype_id)
+n_cd4_clone_post <- data.frame(clones = n_cd4_post@meta.data$clonotype_id)
+
+
+# Naive CD8
+n_cd8_pre <- subset(pre, subset = Cluster.Ident == "Naive CD8")
+n_cd8_post <- subset(post, subset = Cluster.Ident == "Naive CD8")
+n_cd8_clone_pre <- data.frame(clones = n_cd8_pre@meta.data$clonotype_id)
+n_cd8_clone_post <- data.frame(clones = n_cd8_post@meta.data$clonotype_id)
+
+# T-LGL-CD8
+T_LGL_CD8_pre <- subset(pre, subset = Cluster.Ident == "T-LGL-CD8")
+T_LGL_CD8_post <- subset(post, subset = Cluster.Ident == "T-LGL-CD8")
+T_LGL_CD8_clone_pre <- data.frame(clones = T_LGL_CD8_pre@meta.data$clonotype_id)
+T_LGL_CD8_clone_post <- data.frame(clones = T_LGL_CD8_post@meta.data$clonotype_id)
+
+
+
+
+```
+
+```{r}
+# intersecting clones
+
+# Memory CD4
+intersect(m_cd4_clone_pre,m_cd4_clone_post)
+
+# NKT
+intersect(nkt_clone_pre,nkt_clone_post)
+
+# Memory CD8
+intersect(mem_cd8_clone_pre,mem_cd8_clone_post)
+
+# Effector CD8
+intersect(eft_cd8_clone_pre,eft_cd8_clone_post)
+
+# Memory Effector CD8
+intersect(mem_eft_cd8_clone_pre,mem_eft_cd8_clone_post)
+
+# Naive CD4
+intersect(n_cd4_clone_pre,n_cd4_clone_post)
+
+# Naive CD8
+intersect(n_cd8_clone_pre,n_cd8_clone_post)
+
+# T-LGL-CD8
+intersect(T_LGL_CD8_clone_pre,T_LGL_CD8_clone_post)
+
+```
+
+```{r}
+
+# subset into mutant and WT
+MUT <- subset(tcr, subset = Genotype == "MUT")
+WT <- subset(tcr, subset = Genotype == "WT")
+
+mut_clones <- data.frame(clones = MUT@meta.data$clonotype_id)
+wt_clones <- data.frame(clones = WT@meta.data$clonotype_id)
+
+# intersection of all clonotypes between mutant and wt 
+intersect(mut_clones,wt_clones)
+
+```
+
+
+see if largest populations change across lineages 
+```{r}
+
+intersect(m_cd4_clone_post,n_cd4_clone_post)
+
+intersect(mem_cd8_clone_pre,eft_cd8_clone_pre)
+intersect(mem_cd8_clone_post,eft_cd8_clone_post)
+intersect(mem_eft_cd8_clone_post,eft_cd8_clone_post)
+intersect(mem_eft_cd8_clone_pre,eft_cd8_clone_pre)
+intersect(mem_eft_cd8_clone_pre,mem_cd8_clone_pre)
+intersect(mem_eft_cd8_clone_post,mem_cd8_clone_post)
+
+
+intersect(mem_cd8_clone_pre,mem_eft_cd8_clone_pre,eft_cd8_clone_pre)
+intersect(mem_cd8_clone_post,mem_eft_cd8_clone_post,eft_cd8_clone_post)
+
+
+
+
+```
+
+
+
+```{r}
+# clones expanded across memory CD8, effector CD8, and memory effector CD8
+
+
+pre_cd8_int <- intersect(mem_cd8_clone_pre,mem_eft_cd8_clone_pre,eft_cd8_clone_pre)
+post_cd8_int <- intersect(mem_cd8_clone_post,mem_eft_cd8_clone_post,eft_cd8_clone_post)
+
+
+
+```
+
+
+
+

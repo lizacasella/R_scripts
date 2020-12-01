@@ -1,0 +1,103 @@
+---
+title: "CITE"
+output: html_document
+---
+
+```{r init}
+library(Seurat)
+library(ggplot2)
+library(patchwork)
+
+
+
+# Load the dataset 
+
+calr <- readRDS("/Users/lizacasella/Desktop/calr_data/calr_tcr.rds")
+
+
+```
+
+
+
+```{r}
+
+## pre-process
+
+calr <- NormalizeData(calr)
+# choose ~1k variable features
+calr <- FindVariableFeatures(calr)
+# standard scaling (no regression)
+calr <- ScaleData(calr)
+# Run PCA, select 13 PCs for tSNE visualization and graph-based clustering
+calr <- RunPCA(calr, verbose = FALSE)
+#ElbowPlot(calr, ndims = 50)
+```
+
+
+```{r}
+calr <- FindNeighbors(calr, dims = 1:10)
+calr <- FindClusters(calr, resolution = 0.5)
+calr <- RunTSNE(calr, dims = 1:10, method = "FIt-SNE")
+
+
+# Find the markers that define each cluster
+calr.rna.markers <- FindAllMarkers(calr, max.cells.per.ident = 100, min.diff.pct = 0.3, only.pos = TRUE)
+
+# cell identities 
+new.cluster.ids <- unique(calr@meta.data$Cluster.Main)
+names(new.cluster.ids) <- levels(calr)
+calr <- RenameIdents(calr, new.cluster.ids)
+
+# plot tSNE by cell type
+DimPlot(calr, label = TRUE,group.by = "Cluster.Ident") + NoLegend()
+```
+
+
+```{r}
+
+#### add protein expression data
+
+adt <-  GetAssayData(object = calr, assay = "ADT", slot = "data")[1:5,1:5]
+
+
+# pre-process again with ADT assay
+calr <- NormalizeData(calr, assay = "ADT", normalization.method = "CLR")
+calr <- ScaleData(calr, assay = "ADT")
+```
+
+
+
+```{r}
+
+adt.markers <- FindAllMarkers(calr, assay = "ADT")
+
+DoHeatmap(calr, features = unique(adt.markers$gene), assay = "ADT", angle = 90) + NoLegend()
+
+
+
+
+
+```
+
+
+```{r}
+names <- rownames(calr)
+
+DefaultAssay(calr) <- "ADT"
+calr <- RunPCA(calr, features = c("ADT-CD274-PDL","ADT-CD279-PD1","ADT-CD127", "ADT-CD56", "ADT-CD152"), reduction.name = "pca_adt", reduction.key = "pca_adt_", verbose = FALSE)
+
+FeaturePlot(calr, features = c("ADT-CD274-PDL","ADT-CD279-PD1","ADT-CD127", "ADT-CD56", "ADT-CD152"), min.cutoff = "q05", max.cutoff = "q95", ncol = 2)
+
+DimPlot(calr,group.by = "Cluster.Ident") 
+
+
+
+```
+
+
+
+
+
+
+
+

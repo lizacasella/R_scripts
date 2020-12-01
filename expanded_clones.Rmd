@@ -1,0 +1,127 @@
+---
+title: "expanded_clones"
+output: html_document
+---
+
+
+```{r init}
+library(dplyr) # data manipulation
+library(Seurat) # toolkit single cell RNA seq data
+library(ggplot2)
+library(ggpubr)
+
+# Load the dataset 
+tcr <- readRDS("/Users/lizacasella/Desktop/calr_data/calr_tcr.rds")
+
+# normalize and scale 
+tcr <- NormalizeData(tcr)
+tcr <- ScaleData(tcr)
+
+# show number of cells for each seurat cluster 
+table(Idents(tcr))
+
+
+```
+
+
+```{r}
+
+# cell types
+cells <- data.frame(unique(tcr@meta.data$Cluster.Ident))
+
+# subset into pre- and post-IFN
+pre <- subset(tcr, subset = IFN.Status2 == "Pre")
+post <- subset(tcr, subset = IFN.Status2 == "Post")
+
+# plot UMAP projection for pre and post
+# DimPlot(pre, group.by = "Cluster.Ident") 
+# DimPlot(post, group.by = "Cluster.Ident") 
+
+```
+
+
+
+all cell types
+```{r}
+# all cell types 
+
+# dataframes of clonotypes
+cl_pre <- data.frame(clone = c(pre@meta.data$clonotype_id))
+cl_post <- data.frame(clone = c(post@meta.data$clonotype_id))
+
+# find clones
+pre_dup <- data.frame(duplicated(cl_pre))
+pre_dup_cl <- cl_pre[pre_dup=="TRUE"]
+post_dup <- data.frame(duplicated(cl_post))
+post_dup_cl <- cl_post[post_dup=="TRUE"]
+
+# make data frames with number of each clonotype
+all_pre <- data.frame(table(pre_dup_cl))
+all_pre <- data.frame(clone = all_pre$pre_dup_cl, Freq = all_pre$Freq)
+all_post <- data.frame(table(post_dup_cl))
+all_post <- data.frame(clone = all_post$post_dup_cl, Freq = all_post$Freq)
+
+
+num_cells_pre <- data.frame(Freq = (all_pre$Freq + 1))
+num_cells_post <- data.frame(Freq = (all_post$Freq + 1))
+
+data.frame(intersect(all_pre$clone,all_post$clone))
+
+
+# plot histograms of number of clones - actual cell numbers
+# pr <- ggplot(num_cells_pre) + geom_bar(aes(Freq)) + theme_bw() + xlim(0,25) + ylim(0,45) + ggtitle("Pre-IFN") + xlab("clonal population size") + theme_bw()
+# po <- ggplot(num_cells_post) + geom_bar(aes(Freq)) + theme_bw()+ xlim(0,25) + ylim(0,45) + ggtitle("Post-IFN") + xlab("clonal population size") + theme_bw()
+# 
+# ggarrange(pr,po)
+
+
+
+```
+
+```{r}
+
+# order clonotypes by frequency 
+pre_ord <- all_pre[order(all_pre$Freq),]
+post_ord <- all_post[order(all_post$Freq),]
+
+# subset of clonotypes with population > 10
+pre_exp <- data.frame(clone = c(pre_ord["clone"][pre_ord["Freq"] >= 10]), Freq = c(pre_ord["Freq"][pre_ord["Freq"]>=10]))
+post_exp <- data.frame(clone = c(post_ord["clone"][post_ord["Freq"] >= 10]), Freq = c(post_ord["Freq"][post_ord["Freq"]>=10]))
+
+# names of cell types
+cells <- data.frame(type = c(unique(tcr@meta.data$Cluster.Ident[tcr@meta.data$Cluster.Ident!="NA"])))
+
+# data frames of cell type and clonotype id pre- and post-iFN
+all_cells_pre <- data.frame(type = c(pre@meta.data$Cluster.Ident))
+all_cells_post <- data.frame(type = c(post@meta.data$Cluster.Ident))
+all_cells_pre$clone <-data.frame(pre@meta.data$clonotype_id)
+all_cells_post$clone <- data.frame(post@meta.data$clonotype_id)
+
+
+
+```
+
+
+```{r}
+
+df_post <- cells
+df$clone5 <- data.frame(clone5 = c(length(all_cells_post[all_cells_post["clone"]=="clonotype5"&all_cells_post["type"]=="Memory CD4"]),length(all_cells_post[all_cells_post["clone"]=="clonotype5"&all_cells_post["type"]=="NKT"]),length(all_cells_post[all_cells_post["clone"]=="clonotype5"&all_cells_post["type"]=="Memory CD8"]),length(all_cells_post[all_cells_post["clone"]=="clonotype5"&all_cells_post["type"]=="Effector CD8"]),length(all_cells_post[all_cells_post["clone"]=="clonotype5"&all_cells_post["type"]=="Memory Effector CD8"]),length(all_cells_post[all_cells_post["clone"]=="clonotype5"&all_cells_post["type"]=="Naive CD4"]),length(all_cells_post[all_cells_post["clone"]=="clonotype5"&all_cells_post["type"]=="Naive CD8"]),length(all_cells_post[all_cells_post["clone"]=="clonotype5"&all_cells_post["type"]=="T-LGL-CD8"])))
+
+
+df_post$clone6 <- data.frame(clone6 = c(length(all_cells_post[all_cells_post["clone"]=="clonotype6"&all_cells_post["type"]=="Memory CD4"]),length(all_cells_post[all_cells_post["clone"]=="clonotype6"&all_cells_post["type"]=="NKT"]),length(all_cells_post[all_cells_post["clone"]=="clonotype6"&all_cells_post["type"]=="Memory CD8"]),length(all_cells_post[all_cells_post["clone"]=="clonotype6"&all_cells_post["type"]=="Effector CD8"]),length(all_cells_post[all_cells_post["clone"]=="clonotype6"&all_cells_post["type"]=="Memory Effector CD8"]),length(all_cells_post[all_cells_post["clone"]=="clonotype6"&all_cells_post["type"]=="Naive CD4"]),length(all_cells_post[all_cells_post["clone"]=="clonotype6"&all_cells_post["type"]=="Naive CD8"]),length(all_cells_post[all_cells_post["clone"]=="clonotype6"&all_cells_post["type"]=="T-LGL-CD8"])))
+
+
+df_post$clone4 <- data.frame(clone1 = c(length(all_cells_post[all_cells_post["clone"]=="clonotype4"&all_cells_post["type"]=="Memory CD4"]),length(all_cells_post[all_cells_post["clone"]=="clonotype4"&all_cells_post["type"]=="NKT"]),length(all_cells_post[all_cells_post["clone"]=="clonotype4"&all_cells_post["type"]=="Memory CD8"]),length(all_cells_post[all_cells_post["clone"]=="clonotype4"&all_cells_post["type"]=="Effector CD8"]),length(all_cells_post[all_cells_post["clone"]=="clonotype4"&all_cells_post["type"]=="Memory Effector CD8"]),length(all_cells_post[all_cells_post["clone"]=="clonotype4"&all_cells_post["type"]=="Naive CD4"]),length(all_cells_post[all_cells_post["clone"]=="clonotype4"&all_cells_post["type"]=="Naive CD8"]),length(all_cells_post[all_cells_post["clone"]=="clonotype4"&all_cells_post["type"]=="T-LGL-CD8"])))
+
+
+df_post$clone8 <- data.frame(clone8 = c(length(all_cells_post[all_cells_post["clone"]=="clonotype8"&all_cells_post["type"]=="Memory CD4"]),length(all_cells_post[all_cells_post["clone"]=="clonotype8"&all_cells_post["type"]=="NKT"]),length(all_cells_post[all_cells_post["clone"]=="clonotype4"&all_cells_post["type"]=="Memory CD8"]),length(all_cells_post[all_cells_post["clone"]=="clonotype8"&all_cells_post["type"]=="Effector CD8"]),length(all_cells_post[all_cells_post["clone"]=="clonotype8"&all_cells_post["type"]=="Memory Effector CD8"]),length(all_cells_post[all_cells_post["clone"]=="clonotype8"&all_cells_post["type"]=="Naive CD4"]),length(all_cells_post[all_cells_post["clone"]=="clonotype8"&all_cells_post["type"]=="Naive CD8"]),length(all_cells_post[all_cells_post["clone"]=="clonotype8"&all_cells_post["type"]=="T-LGL-CD8"])))
+
+
+df_post$clone12 <- data.frame(clone12 = c(length(all_cells_post[all_cells_post["clone"]=="clonotype12"&all_cells_post["type"]=="Memory CD4"]),length(all_cells_post[all_cells_post["clone"]=="clonotype12"&all_cells_post["type"]=="NKT"]),length(all_cells_post[all_cells_post["clone"]=="clonotype4"&all_cells_post["type"]=="Memory CD8"]),length(all_cells_post[all_cells_post["clone"]=="clonotype12"&all_cells_post["type"]=="Effector CD8"]),length(all_cells_post[all_cells_post["clone"]=="clonotype12"&all_cells_post["type"]=="Memory Effector CD8"]),length(all_cells_post[all_cells_post["clone"]=="clonotype12"&all_cells_post["type"]=="Naive CD4"]),length(all_cells_post[all_cells_post["clone"]=="clonotype12"&all_cells_post["type"]=="Naive CD8"]),length(all_cells_post[all_cells_post["clone"]=="clonotype12"&all_cells_post["type"]=="T-LGL-CD8"])))
+```
+
+
+
+
+
+

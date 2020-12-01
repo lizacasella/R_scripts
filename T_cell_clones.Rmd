@@ -1,0 +1,506 @@
+---
+title: "T cell clones"
+output: html_document
+---
+
+
+```{r init}
+library(dplyr) # data manipulation
+library(Seurat) # toolkit single cell RNA seq data
+library(ggplot2)
+library(ggpubr)
+
+# Load the dataset 
+tcr <- readRDS("/Users/lizacasella/Desktop/calr_data/calr_tcr.rds")
+
+# normalize and scale 
+tcr <- NormalizeData(tcr)
+tcr <- ScaleData(tcr)
+
+# show number of cells for each seurat cluster 
+table(Idents(tcr))
+
+
+```
+
+
+```{r}
+
+# cell types
+cells <- data.frame(unique(tcr@meta.data$Cluster.Ident))
+
+# subset into pre- and post-IFN
+pre <- subset(tcr, subset = IFN.Status2 == "Pre")
+post <- subset(tcr, subset = IFN.Status2 == "Post")
+
+# plot UMAP projection for pre and post
+# DimPlot(pre, group.by = "Cluster.Ident") 
+# DimPlot(post, group.by = "Cluster.Ident") 
+
+```
+
+naive CD8 - one double in pre
+```{r}
+
+# naive CD8 seurat object subset
+n_cd8_pre <- subset(pre, subset = Cluster.Ident == "Naive CD8")
+n_cd8_post <- subset(post, subset = Cluster.Ident == "Naive CD8")
+
+# make dataframes of clonotypes
+n_cd8_clone_pre <- data.frame(clones = n_cd8_pre@meta.data$clonotype_id)
+n_cd8_clone_post <- data.frame(clones = n_cd8_post@meta.data$clonotype_id)
+
+# find duplicated clonotypes - pre-IFN
+n_cd8_dup_pre <- data.frame(duplicated(n_cd8_clone_pre))
+n_cd8_dup_pre_ <- n_cd8_clone_pre[n_cd8_dup_pre=="TRUE"]
+
+# find duplicated clonotypes - post-IFN
+n_cd8_dup_post <- data.frame(duplicated(n_cd8_clone_post))
+n_cd8_dup_post_ <- n_cd8_clone_post[n_cd8_dup_post=="TRUE"]
+
+# shows clonotype and number of clones for pre- and post-IFN
+table(n_cd8_dup_pre_)
+table(n_cd8_dup_post_)
+      
+
+```
+
+Memory CD8 - has some clones, shared clonotype52
+```{r}
+
+# Memory CD8 suerat object subset
+mem_cd8_pre <- subset(pre, subset = Cluster.Ident == "Memory CD8")
+mem_cd8_post <- subset(post, subset = Cluster.Ident == "Memory CD8")
+
+# make dataframes of clonotypes
+mem_cd8_clone_pre <- data.frame(clones =mem_cd8_pre@meta.data$clonotype_id)
+mem_cd8_clone_post <- data.frame(clones = mem_cd8_post@meta.data$clonotype_id)
+
+# find duplicated clonotypes - pre-IFN
+mem_cd8_dup_pre <- data.frame(duplicated(mem_cd8_clone_pre))
+mem_cd8_dup_pre_ <- mem_cd8_clone_pre[mem_cd8_dup_pre=="TRUE"]
+
+# find duplicated clonotypes - post-IFN
+mem_cd8_dup_post <- data.frame(duplicated(mem_cd8_clone_post))
+mem_cd8_dup_post_ <- mem_cd8_clone_post[mem_cd8_dup_post=="TRUE"]
+
+# shows clonotype and number of clones for pre- and post-IFN
+table(mem_cd8_dup_pre_)
+table(mem_cd8_dup_post_)
+
+# make data frames with number of each clonotype
+mem_cd8_pre <- data.frame(table(mem_cd8_dup_pre_))
+mem_cd8_pre <- data.frame(clone = mem_cd8_pre$mem_cd8_dup_pre_, Freq =( mem_cd8_pre$Freq+1))
+mem_cd8_post <- data.frame(table(mem_cd8_dup_post_))
+mem_cd8_post <- data.frame(clone = mem_cd8_post$mem_cd8_dup_post_, Freq = (mem_cd8_post$Freq+1))
+
+# plot histograms of clonotypes
+# pr<-ggplot(mem_cd8_pre) + geom_bar(aes(Freq)) + theme_bw() + xlim(0,8) + ylim(0,11) + ggtitle("Pre-IFN",subtitle = "Memory CD8") + xlab("clonal population size") + theme_bw()
+# po<-ggplot(mem_cd8_post) + geom_bar(aes(Freq)) + theme_bw() + xlim(0,8) + ylim(0,11) + ggtitle("Post-IFN",subtitle = "Memory CD8") + xlab("clonal population size") + theme_bw()
+# ggarrange(pr,po)
+
+
+intersect(mem_cd8_pre$clone,mem_cd8_post$clone)
+
+
+mem_cd8_pre$IFN <- "Pre"
+mem_cd8_post$IFN <- "Post"
+
+
+mem_cd8_graph <- rbind(mem_cd8_pre,mem_cd8_post)
+
+ggplot(mem_cd8_graph, aes(x=Freq,fill=IFN)) + geom_bar() + ggtitle("Memory CD8") + xlab("clonal population size") + xlim(0,10) + scale_x_continuous(breaks=c(1,2,3,4,5,6,7,8,9,10))
+
+
+
+
+
+# mem_cd8_pre[order(mem_cd8_pre$Freq),]
+# mem_cd8_post[order(mem_cd8_post$Freq),]
+
+```
+
+
+
+Effector CD8
+```{r}
+# Effector CD8 suerat object subset
+eft_cd8_pre <- subset(pre, subset = Cluster.Ident == "Effector CD8")
+eft_cd8_post <- subset(post, subset = Cluster.Ident == "Effector CD8")
+
+# make dataframes of clonotypes
+eft_cd8_clone_pre <- data.frame(clones = eft_cd8_pre@meta.data$clonotype_id)
+eft_cd8_clone_post <- data.frame(clones = eft_cd8_post@meta.data$clonotype_id)
+
+# find expanded clonotypes - pre-IFN
+eft_cd8_dup_pre <- data.frame(duplicated(eft_cd8_clone_pre))
+eft_cd8_dup_pre_ <- eft_cd8_clone_pre[eft_cd8_dup_pre=="TRUE"]
+# find expanded clonotypes - post-IFN
+eft_cd8_dup_post <- data.frame(duplicated(eft_cd8_clone_post))
+eft_cd8_dup_post_ <- eft_cd8_clone_post[eft_cd8_dup_post=="TRUE"]
+
+# make data frames with number of each clonotype
+etf_cd8_pre2 <- data.frame(table(eft_cd8_dup_pre_))
+etf_cd8_pre2 <- data.frame(clone = etf_cd8_pre2$eft_cd8_dup_pre_, Freq = (etf_cd8_pre2$Freq+1))
+etf_cd8_post2<- data.frame(table(eft_cd8_dup_post_))
+etf_cd8_post2 <- data.frame(clone = etf_cd8_post2$eft_cd8_dup_post_, Freq = (etf_cd8_post2$Freq+1))
+
+# plot histograms of clonotypes
+pr<-ggplot(etf_cd8_pre2) + geom_bar(aes(Freq)) + theme_bw() + xlim(0,15) + ylim(0,5) + ggtitle("Pre-IFN", subtitle = "Effector CD8") + xlab("clonal population size") + theme_bw()
+po<-ggplot(etf_cd8_post2) + geom_bar(aes(Freq)) + theme_bw() + xlim(0,15) + ylim(0,5) + ggtitle("Post-IFN", subtitle = "Effector CD8") + xlab("clonal population size") + theme_bw()
+
+ggarrange(pr,po)
+
+intersect(etf_cd8_pre2$clone, etf_cd8_post2$clone)
+
+# 
+# etf_cd8_pre2$IFN <- "Pre"
+# etf_cd8_post2$IFN <- "Post"
+# 
+# 
+# etf_cd8_graph <- rbind(etf_cd8_pre2,etf_cd8_post2)
+# 
+# ggplot(etf_cd8_graph, aes(x=Freq,fill=IFN)) + geom_bar() + ggtitle("Pre-IFN",subtitle = "Effector CD8") + xlab("clonal population size")
+# 
+
+
+# etf_cd8_pre2[order(etf_cd8_pre2$Freq),]
+# etf_cd8_post2[order(etf_cd8_post2$Freq),]
+
+```
+
+Memory Effector CD8 - lots of clones, no shared populations
+```{r}
+# Memory Effector CD8 suerat object subset
+mem_eft_cd8_pre <- subset(pre, subset = Cluster.Ident == "Memory Effector CD8")
+mem_eft_cd8_post <- subset(post, subset = Cluster.Ident == "Memory Effector CD8")
+
+# make dataframes of clonotypes
+mem_eft_cd8_clone_pre <- data.frame(clones = mem_eft_cd8_pre@meta.data$clonotype_id)
+mem_eft_cd8_clone_post <- data.frame(clones = mem_eft_cd8_post@meta.data$clonotype_id)
+
+# find expanded clonotypes - pre-IFN
+mem_eft_cd8_dup_pre <- data.frame(duplicated(mem_eft_cd8_clone_pre))
+mem_eft_cd8_dup_pre_ <- mem_eft_cd8_clone_pre[mem_eft_cd8_dup_pre=="TRUE"]
+# find expanded clonotypes - post-IFN
+mem_eft_cd8_dup_post <- data.frame(duplicated(mem_eft_cd8_clone_post))
+mem_eft_cd8_dup_post_ <- mem_eft_cd8_clone_post[mem_eft_cd8_dup_post=="TRUE"]
+
+# make data frames with number of each clonotype
+m_etf_cd8_pre <- data.frame(table(mem_eft_cd8_dup_pre_))
+m_etf_cd8_pre <- data.frame(clone = m_etf_cd8_pre$mem_eft_cd8_dup_pre_, Freq = (m_etf_cd8_pre$Freq+1))
+m_etf_cd8_post <- data.frame(table(mem_eft_cd8_dup_post_))
+m_etf_cd8_post <- data.frame(clone = m_etf_cd8_post$mem_eft_cd8_dup_post_, Freq = (m_etf_cd8_post$Freq+1))
+
+# plot histograms of clonotypes
+pr<-ggplot(m_etf_cd8_pre) + geom_bar(aes(Freq)) + theme_bw() + xlim(0,20) + ylim(0,20) + ggtitle("Pre-IFN", subtitle = "Memory Effector CD8") + xlab("clonal population size") + theme_bw()
+po<-ggplot(m_etf_cd8_post) + geom_bar(aes(Freq)) + theme_bw() + xlim(0,20) + ylim(0,20) + ggtitle("Post-IFN", subtitle = "Memory Effector CD8") + xlab("clonal population size") + theme_bw()
+
+ggarrange(pr,po)
+
+intersect(m_etf_cd8_pre$clone,m_etf_cd8_post$clone)
+
+
+m_etf_cd8_pre$IFN <- "Pre"
+m_etf_cd8_post$IFN <- "Post"
+
+m_etf_cd8_graph <- rbind(m_etf_cd8_pre,m_etf_cd8_post)
+
+ggplot(m_etf_cd8_graph, aes(x=Freq,fill=IFN)) + geom_bar() + ggtitle("Pre-IFN",subtitle = "Memory Effector CD8") + xlab("clonal population size")
+
+
+
+
+# length(cd8_clone_post[cd8_clone_post=="clonotype13"])
+
+
+# m_etf_cd8_pre[order(m_etf_cd8_pre$Freq),]
+# m_etf_cd8_post[order(m_etf_cd8_post$Freq),]
+
+
+i_cd8_pre <- intersect(mem_cd8_clone_pre,mem_eft_cd8_clone_pre,eft_cd8_clone_pre)
+i_cd8_post <- intersect(mem_cd8_clone_post,mem_eft_cd8_clone_post,eft_cd8_clone_post)
+
+
+
+
+```
+ 
+
+naive CD4 - post has two doubles, no clones in pre 
+```{r}
+
+# naive CD4 suerat object subset
+n_cd4_pre <- subset(pre, subset = Cluster.Ident == "Naive CD4")
+n_cd4_post <- subset(post, subset = Cluster.Ident == "Naive CD4")
+
+# make dataframes of clonotypes
+n_cd4_clone_pre <- data.frame(clones = n_cd4_pre@meta.data$clonotype_id)
+n_cd4_clone_post <- data.frame(clones = n_cd4_post@meta.data$clonotype_id)
+
+# find duplicated clonotypes - pre-IFN
+n_cd4_dup_pre <- data.frame(duplicated(n_cd4_clone_pre))
+n_cd4_dup_pre_ <- n_cd4_clone_pre[n_cd4_dup_pre=="TRUE"]
+
+# find duplicated clonotypes - post-IFN
+n_cd4_dup_post <- data.frame(duplicated(n_cd4_clone_post))
+n_cd4_dup_post_ <- n_cd4_clone_post[n_cd4_dup_post=="TRUE"]
+
+table(n_cd4_dup_pre_)
+table(n_cd4_dup_post_)
+
+# make data frames with number of each clonotype
+n_cd4_pre <- data.frame(table(n_cd4_dup_pre_))
+n_cd4_pre <- data.frame(clone = n_cd4_pre$n_cd4_dup_pre_, Freq =( n_cd4_pre$Freq+1))
+n_cd4_post <- data.frame(table(n_cd4_dup_post_))
+n_cd4_post <- data.frame(clone = n_cd4_post$n_cd4_dup_post_, Freq = (n_cd4_post$Freq+1))
+
+intersect(n_cd4_pre$clone,n_cd4_post$clone)
+
+# n_cd4_pre[order(n_cd4_pre$Freq),]
+# n_cd4_post[order(n_cd4_post$Freq),]
+
+```
+
+
+Memory CD4 - only have doubles, none shared
+```{r}
+
+
+# Memory CD4 suerat object subset
+mem_cd4_pre <- subset(pre, subset = Cluster.Ident == "Memory CD4")
+mem_cd4_post <- subset(post, subset = Cluster.Ident == "Memory CD4")
+
+# make dataframes of clonotypes
+m_cd4_clone_pre <- data.frame(clones = mem_cd4_pre@meta.data$clonotype_id)
+m_cd4_clone_post <- data.frame(clones = mem_cd4_post@meta.data$clonotype_id)
+
+# find duplicated clonotypes - pre-IFN
+m_cd4_dup_pre <- data.frame(duplicated(m_cd4_clone_pre))
+m_cd4_dup_pre_ <- m_cd4_clone_pre[m_cd4_dup_pre=="TRUE"]
+
+# find duplicated clonotypes - post-IFN
+m_cd4_dup_post <- data.frame(duplicated(m_cd4_clone_post))
+m_cd4_dup_post_ <- m_cd4_clone_post[m_cd4_dup_post=="TRUE"]
+
+
+table(m_cd4_dup_pre_)
+table(m_cd4_dup_post_)
+
+# length(m_cd4_clone_pre[m_cd4_clone_pre=="clonotype166"])
+
+# make data frames with number of each clonotype
+m_cd4_pre <- data.frame(table(m_cd4_dup_pre_))
+m_cd4_pre <- data.frame(clone = m_cd4_pre$m_cd4_dup_pre_, Freq = (m_cd4_pre$Freq+1))
+m_cd4_post <- data.frame(table(m_cd4_dup_post_))
+m_cd4_post <- data.frame(clone = m_cd4_post$m_cd4_dup_post_, Freq = (m_cd4_post$Freq+1))
+
+# plot histograms of clonotypes
+pr<-ggplot(m_cd4_pre) + geom_bar(aes(Freq)) + theme_bw() + xlim(0,4) + ylim(0,8) + ggtitle("Post-IFN", subtitle = "Memory CD4") + xlab("clonal population size") + theme_bw()
+po<-ggplot(m_cd4_post) + geom_bar(aes(Freq)) + theme_bw()+ xlim(0,4) + ylim(0,8) + ggtitle("Post-IFN", subtitle = "Memory CD4") + xlab("clonal population size") + theme_bw()
+
+ggarrange(pr,po)
+
+
+intersect(m_cd4_pre$clone,m_cd4_post$clone)
+
+# 
+# m_cd4_pre[order(m_cd4_pre$Freq),]
+# m_cd4_post[order(m_cd4_post$Freq),]
+
+```
+
+
+NKT - pre has way more duplicates than post, none shared  
+```{r}
+
+# NKT suerat object subset
+nkt_pre <- subset(pre, subset = Cluster.Ident == "NKT")
+nkt_post <- subset(post, subset = Cluster.Ident == "NKT")
+
+# make dataframes of clonotypes
+nkt_clone_pre <- data.frame(clones = nkt_pre@meta.data$clonotype_id)
+nkt_clone_post <- data.frame(clones = nkt_post@meta.data$clonotype_id)
+
+intersect(nkt_clone_pre,nkt_clone_post)
+
+# find duplicated clonotypes - pre-IFN
+nkt_dup_pre <- data.frame(duplicated(nkt_clone_pre))
+nkt_dup_pre_ <- nkt_clone_pre[nkt_dup_pre=="TRUE"]
+
+# find duplicated clonotypes - post-IFN
+nkt_dup_post <- data.frame(duplicated(nkt_clone_post))
+nkt_dup_post_ <- nkt_clone_post[nkt_dup_post=="TRUE"]
+
+
+t_nkt_pre <- table(nkt_dup_pre_)
+t_nkt_post <- table(nkt_dup_post_)
+
+# make data frames with number of each clonotype (add 1 to frequency)
+nkt_pre2 <- data.frame(table(nkt_dup_pre_))
+nkt_pre2 <- data.frame(clone = nkt_pre2$nkt_dup_pre_, Freq = (nkt_pre2$Freq + 1))
+nkt_post2 <- data.frame(table(nkt_dup_post_))
+nkt_post2 <- data.frame(clone = nkt_post2$nkt_dup_post_, Freq = (nkt_post2$Freq + 1))
+
+# plot histograms of clonotypes
+pr <- ggplot(nkt_pre2) + geom_bar(aes(x=Freq)) + xlim(0,20) + ggtitle("NKT Pre-IFN") + xlab("clonal population size") + theme_bw()
+po <- ggplot(nkt_post2) + geom_bar(aes(Freq)) + theme_bw() + xlim(0,20) + ggtitle("NKT Post-IFN") + xlab("clonal population size") + theme_bw()
+ggarrange(pr,po)
+
+nkt_pre2$IFN <- "Pre"
+nkt_post2$IFN <- "Post"
+
+
+nkt_graph <- rbind(nkt_pre2,nkt_post2)
+
+ggplot(nkt_graph, aes(x=Freq,fill=IFN)) + geom_bar() + ggtitle("Natural Killer T-Cells") + xlab("clonal population size")
+
+
+
+
+
+intersect(nkt_pre2$clone,nkt_post2$clone)
+
+# nkt_pre[order(nkt_pre$Freq),]
+# nkt_post[order(nkt_post$Freq),]
+
+```
+
+
+T-LGL-CD8 - no clones
+```{r}
+
+# T-LGL-CD8 suerat object subset
+
+T_LGL_CD8_pre <- subset(pre, subset = Cluster.Ident == "T-LGL-CD8")
+T_LGL_CD8_post <- subset(post, subset = Cluster.Ident == "T-LGL-CD8")
+
+# make dataframes of clonotypes
+T_LGL_CD8_clone_pre <- data.frame(clones = T_LGL_CD8_pre@meta.data$clonotype_id)
+T_LGL_CD8_clone_post <- data.frame(clones = T_LGL_CD8_post@meta.data$clonotype_id)
+
+# find duplicated clonotypes - pre-IFN
+T_LGL_CD8_dup_pre <- data.frame(duplicated(T_LGL_CD8_clone_pre))
+T_LGL_CD8_dup_pre_ <- T_LGL_CD8_clone_pre[T_LGL_CD8_dup_pre=="TRUE"]
+
+# find duplicated clonotypes - post-IFN
+T_LGL_CD8_dup_post <- data.frame(duplicated(T_LGL_CD8_clone_post))
+T_LGL_CD8_dup_post_ <- T_LGL_CD8_clone_post[T_LGL_CD8_dup_post=="TRUE"]
+
+```
+
+
+all cell types
+```{r}
+# all cell types 
+
+# dataframes of clonotypes
+cl_pre <- data.frame(pre@meta.data$clonotype_id)
+cl_post <- data.frame(post@meta.data$clonotype_id)
+
+# find clones
+pre_dup <- data.frame(duplicated(cl_pre))
+pre_dup_cl <- cl_pre[pre_dup=="TRUE"]
+post_dup <- data.frame(duplicated(cl_post))
+post_dup_cl <- cl_post[post_dup=="TRUE"]
+
+
+# make data frames with number of each clonotype
+all_pre <- data.frame(table(pre_dup_cl))
+all_pre <- data.frame(clone = all_pre$pre_dup_cl, Freq = all_pre$Freq)
+all_post <- data.frame(table(post_dup_cl))
+all_post <- data.frame(clone = all_post$post_dup_cl, Freq = all_post$Freq)
+
+
+num_cells_pre <- data.frame(Freq = (all_pre$Freq + 1))
+num_cells_post <- data.frame(Freq = (all_post$Freq + 1))
+
+
+# plot histograms of clonotypes
+pr <- ggplot(all_pre) + geom_bar(aes(Freq)) + theme_bw() + xlim(0,25) + ylim(0,45) + ggtitle("Pre-IFN clones") + xlab("Number of duplicates") + theme_bw()
+po <- ggplot(all_post) + geom_bar(aes(Freq)) + theme_bw()+ xlim(0,25) + ylim(0,45) + ggtitle("Post-IFN clones") + xlab("Number of duplicates") + theme_bw()
+
+ggarrange(pr,po)
+ 
+data.frame(intersect(all_pre$clone,all_post$clone))
+
+
+# plot histograms of number of clones - actual cell numbers
+pr <- ggplot(num_cells_pre) + geom_bar(aes(Freq)) + theme_bw() + xlim(0,25) + ylim(0,45) + ggtitle("Pre-IFN") + xlab("clonal population size") + theme_bw()
+po <- ggplot(num_cells_post) + geom_bar(aes(Freq)) + theme_bw()+ xlim(0,25) + ylim(0,45) + ggtitle("Post-IFN") + xlab("clonal population size") + theme_bw()
+
+ggarrange(pr,po)
+
+# order clonotypes by frequency 
+all_pre[order(all_pre$Freq),]
+
+
+all_post[order(all_post$Freq),]
+
+```
+
+```{r}
+# show clonotypes ordered by size of population
+
+# all cells
+all_pre[order(all_pre$Freq),]
+all_post[order(all_post$Freq),]
+
+# Natural killer T-cells
+nkt_pre[order(nkt_pre$Freq),]
+nkt_post[order(nkt_post$Freq),]
+
+# memory CD4
+m_cd4_pre[order(m_cd4_pre$Freq),]
+m_cd4_post[order(m_cd4_post$Freq),]
+
+# naive CD4
+n_cd4_pre[order(n_cd4_pre$Freq),]
+n_cd4_post[order(n_cd4_post$Freq),]
+
+# memory effector CD8
+m_etf_cd8_pre[order(m_etf_cd8_pre$Freq),]
+m_etf_cd8_post[order(m_etf_cd8_post$Freq),]
+
+# effector CD8
+etf_cd8_pre2[order(etf_cd8_pre2$Freq),]
+etf_cd8_post2[order(etf_cd8_post2$Freq),]
+
+# memory CD8
+mem_cd8_pre[order(mem_cd8_pre$Freq),]
+mem_cd8_post[order(mem_cd8_post$Freq),]
+
+```
+
+
+
+```{r}
+
+# percentage of distinct clones for each cell type before and after IFN
+
+cells <- data.frame(unique(tcr@meta.data$Cluster.Ident))
+
+cells1 <- data.frame(type = c(cells[cells != "NA"]))
+cells2 <- cells1
+
+cells1$IFN <- 'pre'
+cells2$IFN <- 'post'
+
+cells3 <- rbind(cells1,cells2)
+
+percent_pre <- data.frame(percent = c(97.6,56.4,84.2,47.3,46.4,100,99.5,100))
+percent_post <- data.frame(percent = c(99.5,75.6,81.6,70.6,48,99.3,100,100))
+
+cells_percent <- rbind(percent_pre,percent_post)
+
+cells_final <- cbind(cells3, cells_percent)
+
+
+ggplot(cells_final, aes(x=type,y=percent,fill=IFN)) + geom_bar(position="dodge",stat="identity")+ ggpubr::rotate_x_text() + ggtitle("Percent of unique clonotypes by cell type") + ylab("Percent unique clonotypes") + xlab("cell type")
+
+```
+
+
+
+
+

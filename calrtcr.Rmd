@@ -1,0 +1,130 @@
+---
+title: "tcr calr"
+output: html_document
+---
+
+````{r init}
+library(dplyr) # data manipulation
+library(Seurat) # toolkit single cell RNA seq data
+
+# Load the dataset 
+
+tcr <- readRDS("/Users/lizacasella/Desktop/Nam_Lab/calr_tcr.rds")
+tcrdata <- tcr@meta.data
+```
+
+```{r}
+
+ifn_pre <- data.frame(tcrdata$Cluster.Ident[tcrdata$IFN.Status2=="Pre" & tcrdata$Cluster.Ident!="NA"])
+
+ifn_post <- data.frame(tcrdata$Cluster.Ident[tcrdata$IFN.Status2=="Post"])
+
+```
+
+
+```{r}
+
+
+#cell_types <- distinct(ifn_pre)
+
+cell_types <- data.frame(type=c("Memory CD4","NKT","Memory CD8","Memory Effector CD8","Naive CD4","Naive CD8","Effector CD8","T-LGL-CD8"))
+
+num_pre <- matrix(nrow=8,ncol=1)
+num_post <- matrix(nrow=8,ncol=1)
+
+for (i in 1:8) {
+  
+  num_pre[i,1] <- length(ifn_pre[ifn_pre==cell_types[i,1]])
+  num_post[i,1] <- length(ifn_post[ifn_post==cell_types[i,1]])
+}
+
+
+num_pre <- data.frame(num=c(num_pre / sum(num_pre)))
+
+num_post <- data.frame(num=c(num_post / sum(num_post)))
+
+
+```
+
+
+```{r}
+
+
+
+pre <- data.frame(num_pre,type=cell_types,status="Pre-IFN")
+
+
+post <- data.frame(num_post,type=cell_types,status="Post-IFN")
+
+
+a <- rbind(post,pre)
+
+percent <- round_df(data.frame(a$num), 3, rf = "round") * 100
+
+ggplot(a, aes(x=type,y=num,fill=status)) + geom_bar(position="dodge",stat="identity") + theme_light() + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) + ggtitle("Percent T cells before and after treatment with IFN") + ylab("Percent") + ylim(0,0.35) + xlab("Cell Type") + scale_fill_manual("legend", values = c("Post-IFN" = "violetred4", "Pre-IFN" = "violetred1")) 
+
+```
+
+
+```{r}
+
+mut_pre <- data.frame(tcrdata$Genotype[tcr$Genotype=="MUT" & tcrdata$IFN.Status2=="Pre"])
+mut_post <- data.frame(tcrdata$Genotype[tcr$Genotype=="MUT" & tcrdata$IFN.Status2=="Post"])
+wt_pre <- data.frame(tcrdata$Genotype[tcr$Genotype=="WT" & tcrdata$IFN.Status2=="Pre"])
+wt_post <- data.frame(tcrdata$Genotype[tcr$Genotype=="WT" & tcrdata$IFN.Status2=="Post"])
+
+per_mut_pre <- count(mut_pre) / (count(mut_pre) + count(wt_pre))
+per_mut_post <- count(mut_post) / (count(mut_post) + count(wt_post))
+
+# not a lot of change in percent of calr mutants 
+
+```
+
+
+```{r}
+
+mut_pre <- data.frame(tcrdata$Genotype[tcr$Genotype=="MUT" & tcrdata$IFN.Status2=="Pre"])
+mut_post <- data.frame(tcrdata$Genotype[tcr$Genotype=="MUT" & tcrdata$IFN.Status2=="Post"])
+wt_pre <- data.frame(tcrdata$Genotype[tcr$Genotype=="WT" & tcrdata$IFN.Status2=="Pre"])
+wt_post <- data.frame(tcrdata$Genotype[tcr$Genotype=="WT" & tcrdata$IFN.Status2=="Post"])
+
+per_mut_pre <- count(mut_pre) / (count(mut_pre) + count(wt_pre))
+per_mut_post <- count(mut_post) / (count(mut_post) + count(wt_post))
+
+# not a lot of change in percent of calr mutants 
+
+```
+
+
+
+```{r}
+
+# can we identify T cells specific to CALR mutants
+
+m <- data.frame(tcrdata$Cluster.Ident[tcrdata$Genotype=="MUT"])
+
+w <- data.frame(tcrdata$Cluster.Ident[tcrdata$Genotype!="MUT"])
+
+m_id <- data.frame(tcell = c(length(m[m=="Memory CD4"]), length(m[m=="NKT"]), length(m[m=="Memory CD8"]),length(m[m=="Memory Effector CD8"]), length(m[m=="Naive CD4"]), length(m[m=="Naive CD8"]), length(m[m=="Effector CD8"]), length(m[m=="T-LGL-CD8"])))
+
+w_id <- data.frame(tcell = c(length(w[w=="Memory CD4"]), length(w[w=="NKT"]), length(w[w=="Memory CD8"]),length(w[w=="Memory Effector CD8"]), length(w[w=="Naive CD4"]), length(w[w=="Naive CD8"]), length(w[w=="Effector CD8"]),length(w[w=="T-LGL-CD8"]))) 
+
+m_id <- m_id / sum(m_id) * 100
+w_id <- w_id / sum(w_id) * 100
+
+
+mut_cell <- data.frame(t = cell_types,ID=m_id,label="Mutant")
+wt_cell <- data.frame(t = cell_types,ID=w_id,label="WT")
+
+cell_data <- rbind(mut_cell,wt_cell)
+
+
+ggplot(cell_data, aes(x=type,y=tcell,fill=label)) + geom_bar(position="dodge",stat="identity") + theme_light() + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) + ylim(0,33) + ggtitle("T cell types in mutant and WT CALR cells") + xlab("T cell type") + ylab("Percent") + scale_fill_manual("legend", values = c("Mutant" = "mediumorchid4", "WT" = "lightskyblue")) 
+
+
+
+```
+
+
+
+

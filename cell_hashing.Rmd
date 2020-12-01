@@ -1,0 +1,24 @@
+---
+title: "hashing"
+output: html_document
+---
+
+```{r init}
+
+
+
+```
+
+
+```{r}
+
+
+
+```
+
+
+```{r}
+
+
+```
+

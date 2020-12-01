@@ -1,0 +1,61 @@
+---
+title: "monocle3_on_seurat_umap"
+output: html_document
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+```{r init}
+library(dplyr) 
+library(Seurat) 
+library(monocle3)
+```
+
+```{r}
+
+# load seurat object
+calr <- readRDS("/Users/lizacasella/Desktop/calr_data/calr.3p.rds")
+write.csv(Cells(calr), file = "/Users/lizacasella/Desktop/cellID_obs.csv")
+
+calr <- NormalizeData(calr)
+calr <- ScaleData(calr, features = all.genes)
+calr <- FindNeighbors(calr, dims = 1:10)
+calr <- FindClusters(calr, resolution = 0.5)
+calr <- RunUMAP(calr, dims = 1:10)
+DimPlot(calr, reduction = "umap", group.by = "Cluster.Main")
+
+
+
+
+
+```
+
+
+```{r}
+gene_annotation <- as.data.frame(rownames(calr@reductions[["pca"]]@feature.loadings), row.names = rownames(calr@reductions[["pca"]]@feature.loadings))
+colnames(gene_annotation) <- "gene_short_name"
+
+cell_metadata <- as.data.frame(calr@assays[["RNA"]]@counts@Dimnames[[2]], row.names = calr@assays[["RNA"]]@counts@Dimnames[[2]])
+colnames(cell_metadata) <- "barcode"
+
+New_matrix <- calr@assays[["RNA"]]@counts
+New_matrix <- New_matrix[rownames(calr@reductions[["pca"]]@feature.loadings), ]
+expression_matrix <- New_matrix
+
+cds <- new_cell_data_set(expression_matrix,
+                                     cell_metadata = cell_metadata,
+                                     gene_metadata = gene_annotation)
+
+
+
+type <- data.frame(calr@meta.data$Cluster.Main)
+gene <- data.frame(calr@meta.data$Genotype)
+
+cds@colData$geno <- calr@meta.data$Genotype
+cds@colData$type <- calr@meta.data$Cluster.Main
+```
+
+
+
+
+

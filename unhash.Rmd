@@ -1,0 +1,91 @@
+---
+title: "unhash"
+output: html_document
+---
+
+
+```{r init}
+library(dplyr) # data manipulation
+library(Seurat) # toolkit single cell RNA seq data
+
+# Load the dataset 
+
+tcr <- readRDS("/Users/lizacasella/Desktop/Nam_Lab/calr_tcr.rds")
+
+```
+
+
+```{r}
+
+# Normalize RNA data with log normalization
+tcr <- NormalizeData(tcr)
+# Find and scale variable features
+tcr <- FindVariableFeatures(tcr, selection.method = "mean.var.plot")
+tcr <- ScaleData(tcr, features = VariableFeatures(tcr))
+
+tcr.htos <- tcr@assays$HTO
+
+# Add HTO data as a new assay independent from RNA
+tcr[["HTO"]] <- CreateAssayObject(counts = tcr.htos)
+# Normalize HTO data, here we use centered log-ratio (CLR) transformation
+tcr <- NormalizeData(tcr, assay = "HTO", normalization.method = "CLR")
+
+
+tcr <- HTODemux(tcr, assay = "HTO", positive.quantile = 0.99)
+
+
+table(tcr$HTO_classification.global)
+
+
+Idents(tcr) <- "HTO_maxID"
+RidgePlot(tcr, assay = "HTO", features = rownames(tcr[["HTO"]])[1:2], ncol = 2)
+
+
+FeatureScatter(tcr, feature1 = "HTO-T0", feature2 = "HTO-T1")
+
+Idents(tcr) <- "HTO_classification.global"
+VlnPlot(tcr, features = "nCount_RNA", pt.size = 0.1, log = TRUE)
+
+```
+
+
+```{r}
+
+tcr.subset <- subset(tcr, idents = "Negative", invert = TRUE)
+
+# Calculate a tSNE embedding of the HTO data
+DefaultAssay(tcr.subset) <- "HTO"
+tcr.subset <- ScaleData(tcr.subset, features = rownames(tcr.subset), 
+    verbose = FALSE)
+tcr.subset <- RunPCA(tcr.subset, features = rownames(tcr.subset), approx = FALSE)
+#tcr.subset <- RunTSNE(tcr.subset, dims = 1:8, perplexity = 100)
+DimPlot(tcr.subset)
+
+
+HTOHeatmap(tcr, assay = "HTO", ncells = 5000)
+
+
+tcr.singlet <- subset(tcr, idents = "Singlet")
+# Select the top 1000 most variable features
+tcr.singlet <- FindVariableFeatures(tcr.singlet, selection.method = "mean.var.plot")
+# Scaling RNA data, we only scale the variable features here for efficiency
+tcr.singlet <- ScaleData(tcr.singlet, features = VariableFeatures(tcr.singlet))
+# Run PCA
+tcr.singlet <- RunPCA(tcr.singlet, features = VariableFeatures(tcr.singlet))
+
+
+tcr.singlet <- FindNeighbors(tcr.singlet, reduction = "pca", dims = 1:10)
+tcr.singlet <- FindClusters(tcr.singlet, resolution = 0.6, verbose = FALSE)
+tcr.singlet <- RunTSNE(tcr.singlet, reduction = "pca", dims = 1:10)
+# Projecting singlet identities on TSNE visualization
+DimPlot(tcr.singlet, group.by = "HTO_classification")
+
+
+```
+
+
+
+
+
+
+
